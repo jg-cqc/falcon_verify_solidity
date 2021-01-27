@@ -2,9 +2,19 @@
 pragma solidity ^0.7.0;
 
 import './falcon_constants.sol';
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v2.5.0/contracts/math/SafeMath.sol";
+import "https://github.com/jg-cqc/falcon_verify_solidity/blob/main/falcon_constants.sol";
 
-contract Falcon
+
+/// @title Falcon
+/// @author JGilmore
+// The contract definition. A constructor of the same name will be automatically called on contract creation.
+contract con_falcon_signature_verify
 {
+   // At first, an empty "address"-type variable of the name "creator". Will be set in the constructor.
+    address m_creator;
+    string m_algorithm;
+
     // ====================================================================
     // State variables
     // ====================================================================
@@ -14,6 +24,28 @@ contract Falcon
     // ====================================================================
     // Implementation
     // ====================================================================
+
+    // The constructor. It accepts a string input and saves it to the contract's "greeting" variable.
+    function constuctor(string _algorithm) public
+    {
+        m_creator = msg.sender;
+        m_algorithm = _algorithm;
+    }
+
+    function getSender() public constant returns (string)
+    {
+        return m_creator;
+    }
+
+    function getBlockNumber() public constant returns (uint)
+    {
+        return block.number;
+    }
+
+    function setAlgorithm(string _newAlgorithm) public
+    {
+        m_algorithm = _newAlgorithm;
+    }
 
     function getStateVar1() public view returns (uint16)
     {
@@ -28,6 +60,15 @@ contract Falcon
         __stateVar1 = value1;
         __stateVar2 = value2;
     }
+
+    function kill() public
+    {
+        if (msg.sender == creator)   // Only allow this action if the account sending the signal is the creator
+        {
+            selfdestruct(creator);   // kills this contract and sends remaining funds back to creator
+        }
+    }
+
 
     ///////////////////////////////////////
     // verify
