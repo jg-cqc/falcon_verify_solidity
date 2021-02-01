@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.0;
 
-import "lib_falcon_common.sol"
-import "lib_falcon_vrfy.sol"
-import "lib_falcon_vrfy_constants.sol"
+//import "lib_falcon_common.sol";
+//import "lib_falcon_vrfy_constants.sol";
 
 library lib_falcon_vrfy
 {
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Addition modulo q. Operands must be in the 0..q-1 range.
-    static inline uint32 mq_add(uint32 x, uint32 y)
+    ////////////////////////////////////////
+    function mq_add(uint32 x, uint32 y) private pure returns (uint32)
     {
         uint32    d;
 
@@ -21,10 +19,9 @@ library lib_falcon_vrfy
     }
 
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Subtraction modulo q. Operands must be in the 0..q-1 range.
-    static inline uint32 mq_sub(uint32 x, uint32 y)
+    ////////////////////////////////////////
+    function mq_sub(uint32 x, uint32 y) private pure returns (uint32)
     {
          // As in mq_add(), we use a conditional addition to ensure the result is in the 0..q-1 range.
         uint32    d;
@@ -35,21 +32,19 @@ library lib_falcon_vrfy
     }
 
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Division by 2 modulo q. Operand must be in the 0..q-1 range.
-    static inline uint32 mq_rshift1(uint32 x)
+    ////////////////////////////////////////
+    function mq_rshift1(uint32 x) private pure returns (uint32)
     {
         x += Q & -(x & 1);
         return (x >> 1);
     }
 
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Montgomery multiplication modulo q. If we set R = 2^16 mod q, then this function computes: x * y / R mod q
     // Operands must be in the 0..q-1 range.
-    static inline uint32 mq_montymul(uint32 x, uint32 y)
+    ////////////////////////////////////////
+    function mq_montymul(uint32 x, uint32 y) private pure returns (uint32)
     {
         uint32    z;
         uint32    w;
@@ -63,19 +58,17 @@ library lib_falcon_vrfy
     }
 
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Montgomery squaring (computes (x^2)/R).
-    static inline uint32 mq_montysqr(uint32 x)
+    ////////////////////////////////////////
+    function mq_montysqr(uint32 x) private pure returns (uint32)
     {
         return mq_montymul(x, x);
     }
 
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Divide x by y modulo q = 12289.
-    static inline uint32 mq_div_12289(uint32 x, uint32 y)
+    ////////////////////////////////////////
+    function mq_div_12289(uint32 x, uint32 y) private pure returns (uint32)
     {
     /*$off*/
         uint32    y0;
@@ -123,16 +116,15 @@ library lib_falcon_vrfy
     }
 
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Compute NTT on a ring element.
-    static void mq_NTT(bytes memory /*uint16**/ a, unsigned logn)
+    ////////////////////////////////////////
+    function mq_NTT(bytes memory /*uint16**/ a, unsigned logn) private pure
     {
         uint32  n;
         uint32  t;
         uint32  m;
 
-        n = (uint32)1 << logn;
+        n = uint32(1) << logn;
         t = n;
         for (m = 1; m < n; m <<= 1)
         {
@@ -141,24 +133,26 @@ library lib_falcon_vrfy
             uint32  j1;
 
             ht = t >> 1;
-            for (i = 0, j1 = 0; i < m; i++, j1 += t)
+            j1 = 0;
+            for (i = 0; i < m; i++)
             {
-                uint32      j;
-                uint32      j2;
-                uint32    s;
+                uint32 j;
+                uint32 j2;
+                uint32 s;
 
                 s = GMb[m + i];
                 j2 = j1 + ht;
                 for (j = j1; j < j2; j++)
                 {
-                    uint32    u;
-                    uint32    v;
+                    uint32 u;
+                    uint32 v;
 
                     u = a[j];
                     v = mq_montymul(a[j + ht], s);
-                    a[j] = (uint16)mq_add(u, v);
-                    a[j + ht] = (uint16)mq_sub(u, v);
+                    a[j] = uint16(mq_add(u, v));
+                    a[j + ht] = uint16(mq_sub(u, v));
                 }
+                j1 += t;
             }
 
             t = ht;
@@ -166,17 +160,16 @@ library lib_falcon_vrfy
     }
 
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Compute the inverse NTT on a ring element, binary case.
-    static void mq_iNTT(bytes memory /*uint16**/ a, unsigned logn)
+    ////////////////////////////////////////
+    function mq_iNTT(bytes memory /*uint16**/ a, unsigned logn) private pure
     {
         uint32      n;
         uint32      t;
         uint32      m;
         uint32    ni;
 
-        n = (uint32)1 << logn;
+        n = uint32(1) << logn;
         t = 1;
         m = n;
         while (m > 1)
@@ -188,7 +181,8 @@ library lib_falcon_vrfy
 
             hm = m >> 1;
             dt = t << 1;
-            for (i = 0, j1 = 0; i < hm; i++, j1 += dt)
+            j1 = 0;
+            for (i = 0; i < hm; i++)
             {
                 uint32      j;
                 uint32      j2;
@@ -204,10 +198,11 @@ library lib_falcon_vrfy
 
                     u = a[j];
                     v = a[j + t];
-                    a[j] = (uint16)mq_add(u, v);
+                    a[j] = uint16(mq_add(u, v));
                     w = mq_sub(u, v);
-                    a[j + t] = (uint16)mq_montymul(w, s);
+                    a[j + t] = uint16(mq_montymul(w, s));
                 }
+                j1 += dt;
             }
 
             t = dt;
@@ -222,58 +217,55 @@ library lib_falcon_vrfy
 
         for (m = 0; m < n; m++)
         {
-            a[m] = (uint16)mq_montymul(a[m], ni);
+            a[m] = uint16(mq_montymul(a[m], ni));
         }
     }
 
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Convert a polynomial (mod q) to Montgomery representation.
-    static void mq_poly_tomonty(bytes memory /*uint16**/ f, unsigned logn)
+    ////////////////////////////////////////
+    function mq_poly_tomonty(bytes memory /*uint16**/ f, unsigned logn) private pure
     {
         uint32  u;
         uint32  n;
 
-        n = (uint32)1 << logn;
+        n = uint32(1) << logn;
         for (u = 0; u < n; u++)
         {
-            f[u] = (uint16)mq_montymul(f[u], R2);
+            f[u] = uint16(mq_montymul(f[u], R2));
         }
     }
 
-    ////////////////////////////////////////
-    //
     ////////////////////////////////////////
     // Multiply two polynomials together (NTT representation, and using
     // a Montgomery multiplication). Result f*g is written over f.
-    static void mq_poly_montymul_ntt(bytes memory /*uint16**/ f, const bytes memory /*uint16**/ g, unsigned logn)
+    ////////////////////////////////////////
+    function mq_poly_montymul_ntt(bytes memory /*uint16**/ f, bytes constant memory /*uint16**/ g, unsigned logn) private pure
     {
         uint32  u;
         uint32  n;
         /*~~~~~~*/
 
-        n = (uint32)1 << logn;
+        n = uint32(1) << logn;
         for (u = 0; u < n; u++)
         {
-            f[u] = (uint16)mq_montymul(f[u], g[u]);
+            f[u] = uint16(mq_montymul(f[u], g[u]));
         }
     }
 
     ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
     // Subtract polynomial g from polynomial f.
-    static void mq_poly_sub(bytes memory /*uint16**/ f, const bytes memory /*uint16**/ g, unsigned logn)
+    ////////////////////////////////////////
+    function mq_poly_sub(bytes memory /*uint16**/ f, bytes constant memory /*uint16**/ g, unsigned logn) private pure
     {
         uint32  u;
         uint32  n;
         /*~~~~~~*/
 
-        n = (uint32)1 << logn;
+        n = uint32(1) << logn;
         for (u = 0; u < n; u++)
         {
-            f[u] = (uint16)mq_sub(f[u], g[u]);
+            f[u] = uint16(mq_sub(f[u], g[u]));
         }
     }
 
@@ -282,7 +274,7 @@ library lib_falcon_vrfy
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    void PQCLEAN_FALCON512_CLEAN_to_ntt_monty(bytes memory /*uint16**/ h, unsigned logn)
+    function PQCLEAN_FALCON512_CLEAN_to_ntt_monty(bytes memory /*uint16**/ h, unsigned logn) public pure
     {
         fprintf(stdout, "INFO: PQCLEAN_FALCON512_CLEAN_to_ntt_monty() ENTRY\n");
         mq_NTT(h, logn);
@@ -293,28 +285,28 @@ library lib_falcon_vrfy
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    int PQCLEAN_FALCON512_CLEAN_verify_raw(const bytes memory /*uint16**/     c0,
-                                           const int16_t*      s2,
-                                           const bytes memory /*uint16**/     h,
-                                           unsigned            logn,
-                                           uint8*            workingStorage)
+    function PQCLEAN_FALCON512_CLEAN_verify_raw(bytes constant memory  /*uint16**/     c0,
+                                                bytes constant memory /*int16_t **/    s2,
+                                                bytes constant memory  /*uint16**/     h,
+                                                unsigned            logn,
+                                                bytes memory workingStorage) public pure returns (int)
     {
         uint32      u;
         uint32      n;
         bytes memory /*uint16**/   tt;
 
         fprintf(stdout, "INFO: PQCLEAN_FALCON512_CLEAN_verify_raw() ENTRY\n");
-        n = (uint32)1 << logn;
-        tt = (bytes memory /*uint16**/)workingStorage;
+        n = uint32(1) << logn;
+        tt = workingStorage;  // tt = (uint16 *)workingStorage;
 
         // Reduce s2 elements modulo q ([0..q-1] range).
         for (u = 0; u < n; u++)
         {
             uint32    w;
 
-            w = (uint32)s2[u];
+            w = uint32(s2[u]);
             w += Q & -(w >> 31);
-            tt[u] = (uint16)w;
+            tt[u] = uint16(w);
         }
 
         // Compute -s1 = s2*h - c0 mod phi mod q (in tt[]).
@@ -328,13 +320,13 @@ library lib_falcon_vrfy
         {
             int32_t w;
 
-            w = (int32_t)tt[u];
-            w -= (int32_t)(Q & -(((Q >> 1) - (uint32)w) >> 31));
-            ((int16_t*)tt)[u] = (int16_t)w;
+            w = int32_t(tt[u]);
+            w -= int32_t(Q & -(((Q >> 1) - uint32(w)) >> 31));
+            tt[u] = int16_t(w);  // ((int16_t *)tt)[u] = (int16_t)w;
         }
 
         // Signature is valid if and only if the aggregate (-s1,s2) vector is short enough.
-        int rc = PQCLEAN_FALCON512_CLEAN_is_short((int16_t *)tt, s2, logn);
+        int rc = PQCLEAN_FALCON512_CLEAN_is_short(tt, s2, logn);
 
         fprintf(stdout, "INFO: PQCLEAN_FALCON512_CLEAN_verify_raw() EXIT\n");
         return rc;

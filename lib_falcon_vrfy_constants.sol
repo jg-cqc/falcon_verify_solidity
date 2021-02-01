@@ -1,36 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.0;
 
+// Useful reference:
+//    https://medium.com/@jeancvllr/solidity-tutorial-all-about-bytes-9d88fdb22676
+//    https://medium.com/@jeancvllr/solidity-tutorial-all-about-libraries-762e5a3692f9
+
 library lib_falcon_vrfy_constants
 {
     ////////////////////////////////////////
-    //
+    // Constants for NTT.
+    //   n = 2^logn  (2 <= n <= 1024)
+    //   phi = X^n + 1
+    //   q = 12289
+    //   q0i = -1/q mod 2^16
+    //   R = 2^16 mod q
+    //   R2 = 2^32 mod q
     ////////////////////////////////////////
-    /*
-     * Constants for NTT.
-     *
-     *   n = 2^logn  (2 <= n <= 1024)
-     *   phi = X^n + 1
-     *   q = 12289
-     *   q0i = -1/q mod 2^16
-     *   R = 2^16 mod q
-     *   R2 = 2^32 mod q
-     */
-    const uint32 Q   = 12289;
-    const uint32 Q0I = 12287;
-    const uint32 R   = 4091;
-    const uint32 R2  = 10952;
+    uint32 constant Q   = 12289;
+    uint32 constant Q0I = 12287;
+    uint32 constant R   = 4091;
+    uint32 constant R2  = 10952;
 
     ////////////////////////////////////////
-    //
+    // Table for NTT, binary case:
+    //   GMb[x] = R*(g^rev(x)) mod q
+    // where g = 7 (it is a 2048-th primitive root of 1 modulo q)
+    // and rev() is the bit-reversal function over 10 bits.
     ////////////////////////////////////////
-    /*
-     * Table for NTT, binary case:
-     *   GMb[x] = R*(g^rev(x)) mod q
-     * where g = 7 (it is a 2048-th primitive root of 1 modulo q)
-     * and rev() is the bit-reversal function over 10 bits.
-     */
-    const uint16[] GMb = {
+    uint16[] constant GMb =
+    {
         4091,  7888, 11060, 11208,  6960,  4342,  6275,  9759,
         1591,  6399,  9477,  5266,   586,  5825,  7538,  9710,
         1134,  6407,  1711,   965,  7099,  7674,  3743,  6442,
@@ -162,14 +160,12 @@ library lib_falcon_vrfy_constants
     };
 
     ////////////////////////////////////////
-    //
+    // Table for inverse NTT, binary case:
+    //   iGMb[x] = R*((1/g)^rev(x)) mod q
+    // Since g = 7, 1/g = 8778 mod 12289.
     ////////////////////////////////////////
-    /*
-     * Table for inverse NTT, binary case:
-     *   iGMb[x] = R*((1/g)^rev(x)) mod q
-     * Since g = 7, 1/g = 8778 mod 12289.
-     */
-    const uint16[] iGMb = {
+    uint16[] constant iGMb =
+    {
         4091,  4401,  1081,  1229,  2530,  6014,  7947,  5329,
         2579,  4751,  6464, 11703,  7023,  2812,  5890, 10698,
         3109,  2125,  1960, 10925, 10601, 10404,  4189,  1875,
