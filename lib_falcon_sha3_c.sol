@@ -1,112 +1,103 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.7.0;
 
+////////////////////////////////////////
+// A) The following code was imported from "fips202.c"
+// Based on the public domain implementation in
+// crypto_hash/keccakc512/simple/ from http://bench.cr.yp.to/supercop.html
+// by Ronny Van Keer
+// and the public domain "TweetFips202" implementation
+// from https://twitter.com/tweetfips202
+// by Gilles Van Assche, Daniel J. Bernstein, and Peter Schwabe
+// License: Public domain
+//
+// B) SHAKE256_RATE constant from...
+// file: sha3_c.c
+// brief: Implementation of the OQS SHA3 API via the files fips202.c
+// from: PQClean (https://github.com/PQClean/PQClean/tree/master/common)
+// License: MIT
+////////////////////////////////////////
 
 library lib_falcon_sha3_c
 {
-    ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
-    /**
-    * \file sha3_c.c
-    * \brief Implementation of the OQS SHA3 API via the files fips202.c
-    * from PQClean (https://github.com/PQClean/PQClean/tree/master/common)
-    *
-    * SPDX-License-Identifier: MIT
-    */
-
-
-    #define OQS_SHA3_SHAKE256_RATE  136  // The SHAKE-256 byte absorption rate
-    #define SHAKE256_RATE  OQS_SHA3_SHAKE256_RATE
-    #define shake256       OQS_SHA3_shake256
-
-    // The following code was imported from "fips202.c"
-
-    /* Based on the public domain implementation in
-     * crypto_hash/keccakc512/simple/ from http://bench.cr.yp.to/supercop.html
-     * by Ronny Van Keer
-     * and the public domain "TweetFips202" implementation
-     * from https://twitter.com/tweetfips202
-     * by Gilles Van Assche, Daniel J. Bernstein, and Peter Schwabe
-     * SPDX-License-Identifier: Public domain
-     */
-
-    ///////////////////////////////////////
-    // Macros
-    ///////////////////////////////////////
-    //#define ROL(a, offset) (((a) << (offset)) ^ ((a) >> (64 - (offset))))
-
-    ////////////////////////////////////////
-    //
-    ////////////////////////////////////////
-    function ROL(uint64 a, uint16 offset) private pure returns (uint64)
-    {
-        return (((a) << (offset)) ^ ((a) >> (64 - (offset))));
-    }
+    uint32 constant SHAKE256_RATE = 136;  // The SHAKE-256 byte absorption rate (aka OQS_SHA3_SHAKE256_RATE)
 
     ///////////////////////////////////////
     // Constants
     ///////////////////////////////////////
-    const private int16 PQC_SHAKEINCCTX_BYTES = (8 * 26); // (sizeof(uint64) * 26)
-    const private int16 NROUNDS = 24;
+    int16 constant private CTX_ELEMENTS = 26; // Number of uint64 context elements
+    int16 constant private PQC_SHAKEINCCTX_BYTES = (8 * CTX_ELEMENTS); // (sizeof(uint64) * 26)
+    int16 constant private NROUNDS = 24;
 
     ///////////////////////////////////////
     // Variables
     ///////////////////////////////////////
     // Space to hold the state of the SHAKE-256 incremental hashing API.
-    //uint64[26]: Input/Output incremental state
+    // uint64[26]: Input/Output incremental state
     //              * First 25 values represent Keccak state.
     //              * 26th value represents either the number of absorbed bytes
     //                that have not been permuted, or not-yet-squeezed bytes.
-    const private byte[PQC_SHAKEINCCTX_BYTES] shake256_context; // Internal state.
+    //byte[PQC_SHAKEINCCTX_BYTES]  constant private  shake256_context; // Internal state.
+    uint64[CTX_ELEMENTS]  constant private shake256_context64; // Internal state.
 
-    /* Keccak round constants */
-    const private uint64[NROUNDS] KeccakF_RoundConstants =
-    {
-    	0x0000000000000001ULL, 0x0000000000008082ULL,
-    	0x800000000000808aULL, 0x8000000080008000ULL,
-    	0x000000000000808bULL, 0x0000000080000001ULL,
-    	0x8000000080008081ULL, 0x8000000000008009ULL,
-    	0x000000000000008aULL, 0x0000000000000088ULL,
-    	0x0000000080008009ULL, 0x000000008000000aULL,
-    	0x000000008000808bULL, 0x800000000000008bULL,
-    	0x8000000000008089ULL, 0x8000000000008003ULL,
-    	0x8000000000008002ULL, 0x8000000000000080ULL,
-    	0x000000000000800aULL, 0x800000008000000aULL,
-    	0x8000000080008081ULL, 0x8000000000008080ULL,
-    	0x0000000080000001ULL, 0x8000000080008008ULL
-    };
+    // Keccak round constants
+    uint64[NROUNDS] constant private KeccakF_RoundConstants =
+    [
+    	0x0000000000000001, 0x0000000000008082,
+    	0x800000000000808a, 0x8000000080008000,
+    	0x000000000000808b, 0x0000000080000001,
+    	0x8000000080008081, 0x8000000000008009,
+    	0x000000000000008a, 0x0000000000000088,
+    	0x0000000080008009, 0x000000008000000a,
+    	0x000000008000808b, 0x800000000000008b,
+    	0x8000000000008089, 0x8000000000008003,
+    	0x8000000000008002, 0x8000000000000080,
+    	0x000000000000800a, 0x800000008000000a,
+    	0x8000000080008081, 0x8000000000008080,
+    	0x0000000080000001, 0x8000000080008008
+    ];
 
     ///////////////////////////////////////
     // Implementation: Keccak
     ///////////////////////////////////////
 
     ////////////////////////////////////////
-    //
+    // Solidity implementation of the macro...
+    // #define ROL(a, offset) (((a) << (offset)) ^ ((a) >> (64 - (offset))))
     ////////////////////////////////////////
-    function KeccakF1600_StatePermute(uint64* state) private pure
+    function ROL(uint64 a, uint16 offset) private pure returns (uint64)
+    {
+        return (((a) << (offset)) ^ ((a) >> (64 - (offset))));
+    }
+
+    ////////////////////////////////////////
+    // KeccakF1600_StatePermute()
+    // Input parameters supplied in member variable shake256_context64.
+    // Output values are written to the same member variable.
+    ////////////////////////////////////////
+    function KeccakF1600_StatePermute() private pure
     {
         //fprintf(stdout, "TRACE: KeccakF1600_StatePermute()\n");
         int         round;
-        uint64    Aba, Abe, Abi, Abo, Abu;
-        uint64    Aga, Age, Agi, Ago, Agu;
-        uint64    Aka, Ake, Aki, Ako, Aku;
-        uint64    Ama, Ame, Ami, Amo, Amu;
-        uint64    Asa, Ase, Asi, Aso, Asu;
-        uint64    BCa, BCe, BCi, BCo, BCu;
-        uint64    Da , De , Di , Do , Du ;
-        uint64    Eba, Ebe, Ebi, Ebo, Ebu;
-        uint64    Ega, Ege, Egi, Ego, Egu;
-        uint64    Eka, Eke, Eki, Eko, Eku;
-        uint64    Ema, Eme, Emi, Emo, Emu;
-        uint64    Esa, Ese, Esi, Eso, Esu;
+        uint64 Aba; uint64 Abe; uint64 Abi; uint64 Abo; uint64 Abu;
+        uint64 Aga; uint64 Age; uint64 Agi; uint64 Ago; uint64 Agu;
+        uint64 Aka; uint64 Ake; uint64 Aki; uint64 Ako; uint64 Aku;
+        uint64 Ama; uint64 Ame; uint64 Ami; uint64 Amo; uint64 Amu;
+        uint64 Asa; uint64 Ase; uint64 Asi; uint64 Aso; uint64 Asu;
+        uint64 BCa; uint64 BCe; uint64 BCi; uint64 BCo; uint64 BCu;
+        uint64 Da ; uint64 De ; uint64 Di ; uint64 Do ; uint64 Du ;
+        uint64 Eba; uint64 Ebe; uint64 Ebi; uint64 Ebo; uint64 Ebu;
+        uint64 Ega; uint64 Ege; uint64 Egi; uint64 Ego; uint64 Egu;
+        uint64 Eka; uint64 Eke; uint64 Eki; uint64 Eko; uint64 Eku;
+        uint64 Ema; uint64 Eme; uint64 Emi; uint64 Emo; uint64 Emu;
+        uint64 Esa; uint64 Ese; uint64 Esi; uint64 Eso; uint64 Esu;
 
         // copyFromState(A, state)
-        Aba = state[ 0]; Abe = state[ 1]; Abi = state[ 2]; Abo = state[ 3]; Abu = state[ 4];
-        Aga = state[ 5]; Age = state[ 6]; Agi = state[ 7]; Ago = state[ 8]; Agu = state[ 9];
-        Aka = state[10]; Ake = state[11]; Aki = state[12]; Ako = state[13]; Aku = state[14];
-        Ama = state[15]; Ame = state[16]; Ami = state[17]; Amo = state[18]; Amu = state[19];
-        Asa = state[20]; Ase = state[21]; Asi = state[22]; Aso = state[23]; Asu = state[24];
+        Aba = shake256_context64[ 0]; Abe = shake256_context64[ 1]; Abi = shake256_context64[ 2]; Abo = shake256_context64[ 3]; Abu = shake256_context64[ 4];
+        Aga = shake256_context64[ 5]; Age = shake256_context64[ 6]; Agi = shake256_context64[ 7]; Ago = shake256_context64[ 8]; Agu = shake256_context64[ 9];
+        Aka = shake256_context64[10]; Ake = shake256_context64[11]; Aki = shake256_context64[12]; Ako = shake256_context64[13]; Aku = shake256_context64[14];
+        Ama = shake256_context64[15]; Ame = shake256_context64[16]; Ami = shake256_context64[17]; Amo = shake256_context64[18]; Amu = shake256_context64[19];
+        Asa = shake256_context64[20]; Ase = shake256_context64[21]; Asi = shake256_context64[22]; Aso = shake256_context64[23]; Asu = shake256_context64[24];
 
         for (round = 0; round < NROUNDS; round += 2)
         {
@@ -292,11 +283,11 @@ library lib_falcon_sha3_c
         }
 
         // copyToState(state, A)
-        state[ 0] = Aba; state[ 1] = Abe; state[ 2] = Abi; state[ 3] = Abo; state[ 4] = Abu;
-        state[ 5] = Aga; state[ 6] = Age; state[ 7] = Agi; state[ 8] = Ago; state[ 9] = Agu;
-        state[10] = Aka; state[11] = Ake; state[12] = Aki; state[13] = Ako; state[14] = Aku;
-        state[15] = Ama; state[16] = Ame; state[17] = Ami; state[18] = Amo; state[19] = Amu;
-        state[20] = Asa; state[21] = Ase; state[22] = Asi; state[23] = Aso; state[24] = Asu;
+        shake256_context64[ 0] = Aba; shake256_context64[ 1] = Abe; shake256_context64[ 2] = Abi; shake256_context64[ 3] = Abo; shake256_context64[ 4] = Abu;
+        shake256_context64[ 5] = Aga; shake256_context64[ 6] = Age; shake256_context64[ 7] = Agi; shake256_context64[ 8] = Ago; shake256_context64[ 9] = Agu;
+        shake256_context64[10] = Aka; shake256_context64[11] = Ake; shake256_context64[12] = Aki; shake256_context64[13] = Ako; shake256_context64[14] = Aku;
+        shake256_context64[15] = Ama; shake256_context64[16] = Ame; shake256_context64[17] = Ami; shake256_context64[18] = Amo; shake256_context64[19] = Amu;
+        shake256_context64[20] = Asa; shake256_context64[21] = Ase; shake256_context64[22] = Asi; shake256_context64[23] = Aso; shake256_context64[24] = Asu;
     }
 
     ////////////////////////////////////////
@@ -305,43 +296,44 @@ library lib_falcon_sha3_c
     function keccak_inc_init(void) private pure
     {
         uint32  i;
-        uint64 *s_inc = (uint64 *)shake256_context;
 
         //fprintf(stdout, "TRACE: keccak_inc_init()\n");
         for (i = 0; i < 25; ++i)
         {
-            s_inc[i] = 0;
+            shake256_context64[i] = 0;
         }
-        s_inc[25] = 0;
+        shake256_context64[25] = 0;
     }
 
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function keccak_inc_absorb(uint32 r, const uint8* m, uint32 mlen) public pure
+    function keccak_inc_absorb(uint32 r, bytes memory m, uint32 mlen) public pure
     {
         uint32  i;
-        uint64 *s_inc = (uint64 *)shake256_context;
 
         //fprintf(stdout, "TRACE: keccak_inc_absorb()\n");
-        while (mlen + s_inc[25] >= r)
+        while (mlen + shake256_context64[25] >= r)
         {
-            for (i = 0; i < r - (uint32)s_inc[25]; i++)
+            for (i = 0; i < r - uint32(shake256_context64[25]); i++)
             {
-                s_inc[(s_inc[25] + i) >> 3] ^= (uint64)m[i] << (8 * ((s_inc[25] + i) & 0x07));
+                shake256_context64[(shake256_context64[25] + i) >> 3] ^= (uint64(m[i]) << (8 * ((shake256_context64[25] + i) & 0x07)));
             }
-            mlen -= (uint32)(r - s_inc[25]);
-            m += r - s_inc[25];
-            s_inc[25] = 0;
-            KeccakF1600_StatePermute(s_inc);
+            mlen -= uint32(r - shake256_context64[25]);
+            m += r - shake256_context64[25];
+            shake256_context64[25] = 0;
+
+            // Input parameters supplied in member variable shake256_context64.
+            // Output values are written to the same member variable.
+            KeccakF1600_StatePermute();
         }
 
         for (i = 0; i < mlen; i++)
         {
-            s_inc[(s_inc[25] + i) >> 3] ^= (uint64)m[i] << (8 * ((s_inc[25] + i) & 0x07));
+            shake256_context64[(shake256_context64[25] + i) >> 3] ^= (uint64(m[i]) << (8 * ((shake256_context64[25] + i) & 0x07)));
         }
 
-        s_inc[25] += mlen;
+        shake256_context64[25] += mlen;
     }
 
     /*************************************************
@@ -357,44 +349,42 @@ library lib_falcon_sha3_c
     ////////////////////////////////////////
     function keccak_inc_finalize(uint32 r, uint8 p) public pure
     {
-        uint64 *s_inc = (uint64 *)shake256_context;
-
         //fprintf(stdout, "TRACE: keccak_inc_finalize()\n");
-        s_inc[s_inc[25] >> 3] ^= (uint64)p << (8 * (s_inc[25] & 0x07));
-        s_inc[(r - 1) >> 3] ^= (uint64)128 << (8 * ((r - 1) & 0x07));
-        s_inc[25] = 0;
+        shake256_context64[shake256_context64[25] >> 3] ^= uint64(p) << (8 * (shake256_context64[25] & 0x07));
+        shake256_context64[(r - 1) >> 3] ^= (uint64(128) << (8 * ((r - 1) & 0x07)));
+        shake256_context64[25] = 0;
     }
 
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function keccak_inc_squeeze(uint8* h, uint32 outlen, uint32 r) private pure
+    function keccak_inc_squeeze(/*uint8* h, */ uint32 outlen, uint32 r) private pure returns (bytes memory h)
     {
-        uint64 *s_inc = (uint64 *)shake256_context;
-
         //fprintf(stdout, "TRACE: keccak_inc_squeeze()\n");
         uint32  i;
 
-        for (i = 0; i < outlen && i < s_inc[25]; i++)
+        for (i = 0; i < outlen && i < shake256_context64[25]; i++)
         {
-            h[i] = (uint8)(s_inc[(r - s_inc[25] + i) >> 3] >> (8 * ((r - s_inc[25] + i) & 0x07)));
+            h[i] = uint8(shake256_context64[(r - shake256_context64[25] + i) >> 3] >> (8 * ((r - shake256_context64[25] + i) & 0x07)));
         }
 
         h += i;
         outlen -= i;
-        s_inc[25] -= i;
+        shake256_context64[25] -= i;
 
         while (outlen > 0)
         {
-            KeccakF1600_StatePermute(s_inc);
+            // Input parameters supplied in member variable shake256_context64.
+            // Output values are written to the same member variable.
+            KeccakF1600_StatePermute(shake256_context64);
             for (i = 0; i < outlen && i < r; i++)
             {
-                h[i] = (uint8)(s_inc[i >> 3] >> (8 * (i & 0x07)));
+                h[i] = uint8(shake256_context64[i >> 3] >> (8 * (i & 0x07)));
             }
 
             h += i;
             outlen -= i;
-            s_inc[25] = r - i;
+            shake256_context64[25] = r - i;
         }
     }
 
@@ -407,16 +397,17 @@ library lib_falcon_sha3_c
     ////////////////////////////////////////
     function OQS_SHA3_shake256_inc_init(void) public pure
     {
+        int16 ii;
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_init()\n");
-        memset(shake256_context, 0, PQC_SHAKEINCCTX_BYTES);
-
+        for (ii=0; ii < CTX_ELEMENTS; ii++)
+            shake256_context64[ii] = 0;
         keccak_inc_init();
     }
 
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function OQS_SHA3_shake256_inc_absorb(const uint8* input, uint32 inlen) public pure
+    function OQS_SHA3_shake256_inc_absorb(bytes memory input, uint32 inlen) public pure
     {
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_absorb()\n");
         keccak_inc_absorb(SHAKE256_RATE, input, inlen);
@@ -434,10 +425,11 @@ library lib_falcon_sha3_c
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function OQS_SHA3_shake256_inc_squeeze(uint8* output, uint32 outlen) public pure
+    function OQS_SHA3_shake256_inc_squeeze(/*uint8* output,*/ uint32 outlen) public pure returns (bytes memory output)
     {
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_squeeze()\n");
         keccak_inc_squeeze(output, outlen, SHAKE256_RATE);
+        return output;
     }
 
     ////////////////////////////////////////
@@ -445,9 +437,11 @@ library lib_falcon_sha3_c
     ////////////////////////////////////////
     function OQS_SHA3_shake256_inc_ctx_release(void) public pure
     {
+        int16 ii;
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_ctx_release()\n");
         // Blat over any sensitive data
-        memset(shake256_context, 0, PQC_SHAKEINCCTX_BYTES);
+        for (ii=0; ii < CTX_ELEMENTS; ii++)
+            shake256_context64[ii] = 0;
     }
 
 }
