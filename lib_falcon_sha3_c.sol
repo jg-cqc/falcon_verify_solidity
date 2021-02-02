@@ -18,7 +18,7 @@ pragma solidity ^0.7.0;
 // License: MIT
 ////////////////////////////////////////
 
-library lib_falcon_sha3_c
+contract lib_falcon_sha3_c
 {
     uint32 constant SHAKE256_RATE = 136;  // The SHAKE-256 byte absorption rate (aka OQS_SHA3_SHAKE256_RATE)
 
@@ -38,10 +38,10 @@ library lib_falcon_sha3_c
     //              * 26th value represents either the number of absorbed bytes
     //                that have not been permuted, or not-yet-squeezed bytes.
     //byte[PQC_SHAKEINCCTX_BYTES]  constant private  shake256_context; // Internal state.
-    uint64[CTX_ELEMENTS]  constant private shake256_context64; // Internal state.
+    uint64[CTX_ELEMENTS] private shake256_context64; // Internal state.
 
     // Keccak round constants
-    uint64[NROUNDS] constant private KeccakF_RoundConstants =
+    uint64[NROUNDS] private KeccakF_RoundConstants =
     [
     	0x0000000000000001, 0x0000000000008082,
     	0x800000000000808a, 0x8000000080008000,
@@ -69,6 +69,8 @@ library lib_falcon_sha3_c
     {
         return (((a) << (offset)) ^ ((a) >> (64 - (offset))));
     }
+
+
 
     ////////////////////////////////////////
     // KeccakF1600_StatePermute()
@@ -125,7 +127,7 @@ library lib_falcon_sha3_c
             Asu ^= Du;
             BCu = ROL(Asu, 14);
             Eba = BCa ^ ((~BCe) & BCi);
-            Eba ^= KeccakF_RoundConstants[round];
+            Eba ^= KeccakF_RoundConstants[uint256(round)];
             Ebe = BCe ^ ((~BCi) & BCo);
             Ebi = BCi ^ ((~BCo) & BCu);
             Ebo = BCo ^ ((~BCu) & BCa);
@@ -215,7 +217,7 @@ library lib_falcon_sha3_c
             Esu ^= Du;
             BCu = ROL(Esu, 14);
             Aba = BCa ^ ((~BCe) & BCi);
-            Aba ^= KeccakF_RoundConstants[round + 1];
+            Aba ^= KeccakF_RoundConstants[uint256(round + 1)];
             Abe = BCe ^ ((~BCi) & BCo);
             Abi = BCi ^ ((~BCo) & BCu);
             Abo = BCo ^ ((~BCu) & BCa);
@@ -290,10 +292,11 @@ library lib_falcon_sha3_c
         shake256_context64[20] = Asa; shake256_context64[21] = Ase; shake256_context64[22] = Asi; shake256_context64[23] = Aso; shake256_context64[24] = Asu;
     }
 
+
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function keccak_inc_init(void) private pure
+    function keccak_inc_init() private pure
     {
         uint32  i;
 
@@ -317,10 +320,22 @@ library lib_falcon_sha3_c
         {
             for (i = 0; i < r - uint32(shake256_context64[25]); i++)
             {
-                shake256_context64[(shake256_context64[25] + i) >> 3] ^= (uint64(m[i]) << (8 * ((shake256_context64[25] + i) & 0x07)));
+                /*
+                uint64 x = shake256_context64[(shake256_context64[25] + i) >> 3];
+                uint64 y5 = shake256_context64[25] + i;
+                uint64 y6 = y5 & 0x07;
+                uint64 y7 = 8 * y6;
+                uint8  y8 = uint8(m[i]);
+                uint64 y9 = uint64(y8);
+                uint64 y = y9 << y7;
+                
+                x ^= y;
+                */
+                
+                shake256_context64[(shake256_context64[25] + i) >> 3] ^= (uint64(uint8(m[i])) << (8 * ((shake256_context64[25] + i) & 0x07)));
             }
             mlen -= uint32(r - shake256_context64[25]);
-            m += r - shake256_context64[25];
+            m += (r - shake256_context64[25]);
             shake256_context64[25] = 0;
 
             // Input parameters supplied in member variable shake256_context64.
@@ -330,7 +345,7 @@ library lib_falcon_sha3_c
 
         for (i = 0; i < mlen; i++)
         {
-            shake256_context64[(shake256_context64[25] + i) >> 3] ^= (uint64(m[i]) << (8 * ((shake256_context64[25] + i) & 0x07)));
+            shake256_context64[(shake256_context64[25] + i) >> 3] ^= (uint64(uint8(m[i])) << (8 * ((shake256_context64[25] + i) & 0x07)));
         }
 
         shake256_context64[25] += mlen;
@@ -395,7 +410,7 @@ library lib_falcon_sha3_c
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function OQS_SHA3_shake256_inc_init(void) public pure
+    function OQS_SHA3_shake256_inc_init() public pure
     {
         int16 ii;
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_init()\n");
@@ -416,7 +431,7 @@ library lib_falcon_sha3_c
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function OQS_SHA3_shake256_inc_finalize(void) public pure
+    function OQS_SHA3_shake256_inc_finalize() public pure
     {
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_finalize()\n");
         keccak_inc_finalize(SHAKE256_RATE, 0x1F);
@@ -435,7 +450,7 @@ library lib_falcon_sha3_c
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function OQS_SHA3_shake256_inc_ctx_release(void) public pure
+    function OQS_SHA3_shake256_inc_ctx_release() public pure
     {
         int16 ii;
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_ctx_release()\n");
