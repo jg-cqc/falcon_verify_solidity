@@ -29,13 +29,13 @@ library lib_falcon_pqclean
                          uint16       mlen,
                          bytes memory pk        ) public pure returns (int16)
     {
-        uint8[2 * 512] workingStorage; // array of 1024 bytes
-        uint16[512] h;
-        uint16[512] hm;
-        int16[512]  sig;
-        uint16 sz1;
-        uint16 sz2;
-        int16 rc;
+        uint8[2*512]  workingStorage; // array of 1024 bytes
+        uint16[512]   h;
+        uint16[512]   hm;
+        int16[512]    sig;
+        uint16        sz1;
+        uint16        sz2;
+        int16         rc;
 
         //fprintf(stdout, "INFO: do_verify() ENTRY\n");
 
@@ -112,9 +112,23 @@ library lib_falcon_pqclean
             return -12;
         }
 
-        const uint8 *nonce      = sig + 1;
-        const uint8 *sigbuf     = sig + 1 + NONCELEN;
-        const uint32   sigbuflen  = siglen - 1 - NONCELEN;
+        uint             ii;
+        uint             sourceOffset;
+        uint8[NONCELEN]  nonce;
+        uint32           sigbuflen = siglen - 1 - NONCELEN;
+        uint8[sigbuflen] sigbuf;
+        
+        sourceOffset = 1;
+        for(ii=0; ii<NONCELEN; ii++) 
+        {
+            nonce[ii] = sig[sourceOffset + ii];
+        }
+        
+        sourceOffset = 1 + NONCELEN;
+        for(ii=0; ii<sigbuflen; ii++) 
+        {
+            sigbuf[ii] = sig[sourceOffset + ii];
+        }
 
         //fprintf(stdout, "INFO: PQCLEAN_FALCON512_CLEAN_crypto_sign_verify() Calling do_verify()\n");
         return do_verify(nonce, sigbuf, sigbuflen, m, mlen, pk);

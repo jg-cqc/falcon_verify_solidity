@@ -5,7 +5,7 @@ pragma solidity ^0.7.0;
 //    https://medium.com/@jeancvllr/solidity-tutorial-all-about-bytes-9d88fdb22676
 //    https://medium.com/@jeancvllr/solidity-tutorial-all-about-libraries-762e5a3692f9
 
-library lib_falcon_vrfy_constants
+contract lib_falcon_vrfy_constants
 {
     ////////////////////////////////////////
     // Constants for NTT.
@@ -27,8 +27,8 @@ library lib_falcon_vrfy_constants
     // where g = 7 (it is a 2048-th primitive root of 1 modulo q)
     // and rev() is the bit-reversal function over 10 bits.
     ////////////////////////////////////////
-    uint16[] constant GMb =
-    {
+    uint16[1024] GMb =
+    [
         4091,  7888, 11060, 11208,  6960,  4342,  6275,  9759,
         1591,  6399,  9477,  5266,   586,  5825,  7538,  9710,
         1134,  6407,  1711,   965,  7099,  7674,  3743,  6442,
@@ -157,15 +157,15 @@ library lib_falcon_vrfy_constants
         8510,  9935,  5536,  9019,  3706, 12009,  1452,  3067,
         5494,  9692,  4865,  6019,  7106,  9610,  4588, 10165,
         6261,  5887,  2652, 10172,  1580, 10379,  4638,  9949
-    };
+    ];
 
     ////////////////////////////////////////
     // Table for inverse NTT, binary case:
     //   iGMb[x] = R*((1/g)^rev(x)) mod q
     // Since g = 7, 1/g = 8778 mod 12289.
     ////////////////////////////////////////
-    uint16[] constant iGMb =
-    {
+    uint16[1024] iGMb =
+    [
         4091,  4401,  1081,  1229,  2530,  6014,  7947,  5329,
         2579,  4751,  6464, 11703,  7023,  2812,  5890, 10698,
         3109,  2125,  1960, 10925, 10601, 10404,  4189,  1875,
@@ -294,5 +294,5 @@ library lib_falcon_vrfy_constants
         4062, 10666,  7727, 11752,  5534,   312,  4307,  4351,
         5764,  8679,  8381,  8187,     5,  7395,  4363,  1152,
         5421,  5231,  6473,   436,  7567,  8603,  6229,  8230
-    };
+    ];
 }

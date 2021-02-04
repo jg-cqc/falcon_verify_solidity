@@ -71,13 +71,13 @@ contract lib_falcon_sha3_c
     }
 
 
-
+/* TODO: Stack usage is too high
     ////////////////////////////////////////
     // KeccakF1600_StatePermute()
     // Input parameters supplied in member variable shake256_context64.
     // Output values are written to the same member variable.
     ////////////////////////////////////////
-    function KeccakF1600_StatePermute() private pure
+    function KeccakF1600_StatePermute() public payable 
     {
         //fprintf(stdout, "TRACE: KeccakF1600_StatePermute()\n");
         int         round;
@@ -291,12 +291,12 @@ contract lib_falcon_sha3_c
         shake256_context64[15] = Ama; shake256_context64[16] = Ame; shake256_context64[17] = Ami; shake256_context64[18] = Amo; shake256_context64[19] = Amu;
         shake256_context64[20] = Asa; shake256_context64[21] = Ase; shake256_context64[22] = Asi; shake256_context64[23] = Aso; shake256_context64[24] = Asu;
     }
-
+*/
 
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function keccak_inc_init() private pure
+    function keccak_inc_init() public payable
     {
         uint32  i;
 
@@ -313,6 +313,7 @@ contract lib_falcon_sha3_c
     ////////////////////////////////////////
     function keccak_inc_absorb(uint32 r, bytes memory m, uint32 mlen) public pure
     {
+/* TODO: 
         uint32  i;
 
         //fprintf(stdout, "TRACE: keccak_inc_absorb()\n");
@@ -320,17 +321,17 @@ contract lib_falcon_sha3_c
         {
             for (i = 0; i < r - uint32(shake256_context64[25]); i++)
             {
-                /*
-                uint64 x = shake256_context64[(shake256_context64[25] + i) >> 3];
-                uint64 y5 = shake256_context64[25] + i;
-                uint64 y6 = y5 & 0x07;
-                uint64 y7 = 8 * y6;
-                uint8  y8 = uint8(m[i]);
-                uint64 y9 = uint64(y8);
-                uint64 y = y9 << y7;
-                
-                x ^= y;
-                */
+                ///////////////////////////////////////////////////////////////////////////
+                //uint64 x = shake256_context64[(shake256_context64[25] + i) >> 3];
+                //uint64 y5 = shake256_context64[25] + i;
+                //uint64 y6 = y5 & 0x07;
+                //uint64 y7 = 8 * y6;
+                //uint8  y8 = uint8(m[i]);
+                //uint64 y9 = uint64(y8);
+                //uint64 y = y9 << y7;
+                //
+                //x ^= y;
+                ///////////////////////////////////////////////////////////////////////////
                 
                 shake256_context64[(shake256_context64[25] + i) >> 3] ^= (uint64(uint8(m[i])) << (8 * ((shake256_context64[25] + i) & 0x07)));
             }
@@ -347,8 +348,8 @@ contract lib_falcon_sha3_c
         {
             shake256_context64[(shake256_context64[25] + i) >> 3] ^= (uint64(uint8(m[i])) << (8 * ((shake256_context64[25] + i) & 0x07)));
         }
-
         shake256_context64[25] += mlen;
+*/
     }
 
     /*************************************************
@@ -362,7 +363,7 @@ contract lib_falcon_sha3_c
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function keccak_inc_finalize(uint32 r, uint8 p) public pure
+    function keccak_inc_finalize(uint32 r, uint8 p) public payable
     {
         //fprintf(stdout, "TRACE: keccak_inc_finalize()\n");
         shake256_context64[shake256_context64[25] >> 3] ^= uint64(p) << (8 * (shake256_context64[25] & 0x07));
@@ -378,6 +379,7 @@ contract lib_falcon_sha3_c
         //fprintf(stdout, "TRACE: keccak_inc_squeeze()\n");
         uint32  i;
 
+/* TODO: 
         for (i = 0; i < outlen && i < shake256_context64[25]; i++)
         {
             h[i] = uint8(shake256_context64[(r - shake256_context64[25] + i) >> 3] >> (8 * ((r - shake256_context64[25] + i) & 0x07)));
@@ -401,6 +403,13 @@ contract lib_falcon_sha3_c
             outlen -= i;
             shake256_context64[25] = r - i;
         }
+*/
+        r = r;
+        for (i = 0; i < outlen; i++)
+        {
+            h[i] = 0xAA;
+        }
+
     }
 
     ///////////////////////////////////////
@@ -410,12 +419,12 @@ contract lib_falcon_sha3_c
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function OQS_SHA3_shake256_inc_init() public pure
+    function OQS_SHA3_shake256_inc_init() public payable 
     {
         int16 ii;
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_init()\n");
         for (ii=0; ii < CTX_ELEMENTS; ii++)
-            shake256_context64[ii] = 0;
+            shake256_context64[uint256(ii)] = 0;
         keccak_inc_init();
     }
 
@@ -431,7 +440,7 @@ contract lib_falcon_sha3_c
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function OQS_SHA3_shake256_inc_finalize() public pure
+    function OQS_SHA3_shake256_inc_finalize() public payable
     {
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_finalize()\n");
         keccak_inc_finalize(SHAKE256_RATE, 0x1F);
@@ -443,20 +452,19 @@ contract lib_falcon_sha3_c
     function OQS_SHA3_shake256_inc_squeeze(/*uint8* output,*/ uint32 outlen) public pure returns (bytes memory output)
     {
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_squeeze()\n");
-        keccak_inc_squeeze(output, outlen, SHAKE256_RATE);
-        return output;
+        output = keccak_inc_squeeze(outlen, SHAKE256_RATE);
     }
 
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function OQS_SHA3_shake256_inc_ctx_release() public pure
+    function OQS_SHA3_shake256_inc_ctx_release() public payable
     {
         int16 ii;
         //fprintf(stdout, "TRACE: OQS_SHA3_shake256_inc_ctx_release()\n");
         // Blat over any sensitive data
         for (ii=0; ii < CTX_ELEMENTS; ii++)
-            shake256_context64[ii] = 0;
+            shake256_context64[uint256(ii)] = 0;
     }
 
 }

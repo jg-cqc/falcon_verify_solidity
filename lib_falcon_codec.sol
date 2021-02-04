@@ -6,34 +6,36 @@ library lib_falcon_codec
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function PQCLEAN_FALCON512_CLEAN_modq_decode(bytes memory /*uint16 **/ x, uint16 logn, bytes memory /*const void**/ in, uint32 max_in_len)  public pure returns (int32)
+    function PQCLEAN_FALCON512_CLEAN_modq_decode(bytes memory /*uint16 **/ x, uint16 logn, bytes memory /*const void**/ In, uint32 max_In_len)  public pure returns (uint32)
     {
-        uint32          n;
-        uint32          in_len;
-        uint32          u;
-        const uint8*  buf;
+        uint32        n;
+        uint32        In_len;
+        uint32        u;
+        //uint8 *       buf;
+        uint32        buf_ndx;
         uint32        acc;
-        int             acc_len;
+        uint32        acc_len;
 
-        n = (uint32)1 << logn;
-        in_len = ((n * 14) + 7) >> 3;
-        if (in_len > max_in_len)
+        n = uint32(1) << logn;
+        In_len = ((n * 14) + 7) >> 3;
+        if (In_len > max_In_len)
         {
             return 0;
         }
 
-        buf = in;
-        acc = 0;
+        //buf = In;
+        buf_ndx = 0;
+        acc     = 0;
         acc_len = 0;
-        u = 0;
+        u       = 0;
+
         while (u < n)
         {
-            acc = (acc << 8) | (*buf++);
+            acc = (acc << 8) | uint32(uint8(In[buf_ndx++]));   // acc = (acc << 8) | (*buf++);
             acc_len += 8;
             if (acc_len >= 14)
             {
-                unsigned    w;
-                /*~~~~~~~~~~*/
+                uint32 w;
 
                 acc_len -= 14;
                 w = (acc >> acc_len) & 0x3FFF;
@@ -42,47 +44,53 @@ library lib_falcon_codec
                     return 0;
                 }
 
-                x[u++] = (uint16)w;
+                // TODO: Check me, incl endianess.
+                //x[u++] = uint16(w);
+                x[u*2  ] = bytes1(uint8(uint16(w) >> 8));
+                x[u*2+1] = bytes1(uint8(uint16(w) & 0x00FF));
+                u++;
             }
         }
 
-        if ((acc & (((uint32)1 << acc_len) - 1)) != 0)
+        if ((acc & ((uint32(1) << acc_len) - 1)) != 0)
         {
             return 0;
         }
 
-        return in_len;
+        return In_len;
     }
 
     ////////////////////////////////////////
     //
     ////////////////////////////////////////
-    function PQCLEAN_FALCON512_CLEAN_comp_decode(bytes memory /*int16_t**/ x, unsigned logn, bytes memory /*const void**/ in, uint32 max_in_len) public pure returns (int32)
+    function PQCLEAN_FALCON512_CLEAN_comp_decode(bytes memory /*int16_t**/ x, uint32 logn, bytes memory /*const void**/ In, uint32 max_In_len) public pure returns (uint32)
     {
-        const uint8*  buf;
-        uint32          n;
-        uint32          u;
-        uint32          v;
-        uint32        acc;
-        unsigned        acc_len;
+        //const uint8 *buf;
+        uint32  buf_ndx;
+        uint32  n;
+        uint32  u;
+        uint32  v;
+        uint32  acc;
+        uint    acc_len;
 
-        n = (uint32)1 << logn;
-        buf = in;
+        n = uint32(1) << logn;
+        //buf = In;
+        buf_ndx = 0;
         acc = 0;
         acc_len = 0;
         v = 0;
         for (u = 0; u < n; u++)
         {
-            unsigned    b;
-            unsigned    s;
-            unsigned    m;
+            uint b;
+            uint s;
+            uint m;
 
-            if (v >= max_in_len)
+            if (v >= max_In_len)
             {
                 return 0;
             }
 
-            acc = (acc << 8) | (uint32)buf[v++];
+            acc = (acc << 8) | uint32(uint8(In[buf_ndx++])); // acc = (acc << 8) | uint32(buf[v++]);
             b = acc >> acc_len;
             s = b & 128;
             m = b & 127;
@@ -91,11 +99,11 @@ library lib_falcon_codec
             {
                 if (acc_len == 0)
                 {
-                    if (v >= max_in_len)
+                    if (v >= max_In_len)
                     {
                         return 0;
                     }
-                    acc = (acc << 8) | (uint32)buf[v++];
+                    acc = (acc << 8) | uint32(uint8(In[buf_ndx++])); // acc = (acc << 8) | uint32(buf[v++]);
                     acc_len = 8;
                 }
 
@@ -111,7 +119,12 @@ library lib_falcon_codec
                     return 0;
                 }
             }
-            x[u] = (int16_t)(s ? - (int)m : (int)m);
+
+            // TODO: Check me, incl endianess.
+            //x[u] = int16(s ? -int(m) : int(m));
+            int16 val = int16((s!=0) ? -int(m) : int(m));
+            x[u*2  ] = bytes1(uint8(val >> 8));
+            x[u*2+1] = bytes1(uint8(val & 0x00FF));
         }
         return v;
     }
