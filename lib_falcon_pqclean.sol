@@ -4,7 +4,7 @@ pragma solidity ^0.7.0;
 // https://manojpramesh.github.io/solidity-cheatsheet/
 
 //import "falcon_sha3_c.sol";
-import * as falcon_sha3 from "falcon_sha3_c.sol";
+import * as falcon_sha3 from "lib_falcon_sha3_c.sol";
 //import "falcon_sha3_c.sol" as falcon_sha3;
 
 library lib_falcon_pqclean
@@ -117,15 +117,15 @@ library lib_falcon_pqclean
         uint8[NONCELEN]  nonce;
         uint32           sigbuflen = siglen - 1 - NONCELEN;
         uint8[sigbuflen] sigbuf;
-        
+
         sourceOffset = 1;
-        for(ii=0; ii<NONCELEN; ii++) 
+        for (ii=0; ii<NONCELEN; ii++)
         {
             nonce[ii] = sig[sourceOffset + ii];
         }
-        
+
         sourceOffset = 1 + NONCELEN;
-        for(ii=0; ii<sigbuflen; ii++) 
+        for (ii=0; ii<sigbuflen; ii++)
         {
             sigbuf[ii] = sig[sourceOffset + ii];
         }
